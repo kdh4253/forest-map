@@ -1,6 +1,6 @@
 (() => {
   'use strict';
-  const VER = '20261119g';   // 배포할 때마다 바꿔 브라우저 캐시를 피한다 (index.html의 ?v= 와 같이)
+  const VER = '20261119h';   // 배포할 때마다 바꿔 브라우저 캐시를 피한다 (index.html의 ?v= 와 같이)
 
   const CAT = {
     bf:  { label: '무장애나눔길', short: '무장애나눔길' },
