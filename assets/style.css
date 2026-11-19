@@ -13,6 +13,8 @@
   --kid: #e8952b;     /* 유아숲 */
   --rec: #2e8b57;     /* 휴양림 */
   --mtn: #b5532a;     /* 등산코스 */
+  --trail: #0e8a8a;   /* 숲길·둘레길 */
+  --ridge: #5b4a8a;   /* 종주길 */
   --focus: #ffb703;
   --radius: 14px;
   --shadow: 0 6px 24px rgba(29, 42, 34, .12);
@@ -24,7 +26,7 @@
   :root {
     --bg: #121714; --surface: #1a211c; --surface-2: #222b25; --ink: #e7ece8; --ink-2: #b4bfb8; --ink-3: #87938b;
     --line: #2d3830; --brand: #5fbf83; --brand-ink: #0d1a12; --brand-soft: #1f3327;
-    --bf: #5aa2ef; --kid: #f0a94a; --rec: #4fbf7d; --mtn: #e07a4f; --shadow: 0 6px 24px rgba(0, 0, 0, .45);
+    --bf: #5aa2ef; --kid: #f0a94a; --rec: #4fbf7d; --mtn: #e07a4f; --trail: #3cc1c1; --ridge: #a08ce0; --shadow: 0 6px 24px rgba(0, 0, 0, .45);
     color-scheme: dark;
   }
 }
@@ -96,7 +98,7 @@ button, input { font: inherit; color: inherit; }
 .chip input { position: absolute; opacity: 0; pointer-events: none; }
 .chip i { width: 10px; height: 10px; border-radius: 50%; background: var(--c); }
 .chip b { font-weight: 600; color: var(--ink-3); font-variant-numeric: tabular-nums; }
-.chip.bf { --c: var(--bf); } .chip.kid { --c: var(--kid); } .chip.rec { --c: var(--rec); } .chip.mtn { --c: var(--mtn); }
+.chip.bf { --c: var(--bf); } .chip.kid { --c: var(--kid); } .chip.rec { --c: var(--rec); } .chip.mtn { --c: var(--mtn); } .chip.trail { --c: var(--trail); } .chip.ridge { --c: var(--ridge); }
 .toggles { display: flex; flex-wrap: wrap; gap: 4px 16px; }
 .chip:has(input:checked) { border-color: var(--c); background: color-mix(in srgb, var(--c) 12%, var(--surface)); }
 .chip:has(input:not(:checked)) { opacity: .55; }
@@ -124,7 +126,7 @@ button, input { font: inherit; color: inherit; }
 .more { display: block; margin: 8px auto; padding: 10px 18px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; }
 
 .dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; flex: none; background: var(--c); }
-.dot.bf { --c: var(--bf); } .dot.kid { --c: var(--kid); } .dot.rec { --c: var(--rec); } .dot.mtn { --c: var(--mtn); }
+.dot.bf { --c: var(--bf); } .dot.kid { --c: var(--kid); } .dot.rec { --c: var(--rec); } .dot.mtn { --c: var(--mtn); } .dot.trail { --c: var(--trail); } .dot.ridge { --c: var(--ridge); }
 .badge { display: inline-block; padding: 1px 7px; border-radius: 6px; font-size: .78em; font-weight: 600; background: var(--surface-2); color: var(--ink-2); }
 .badge.warn { background: color-mix(in srgb, var(--kid) 18%, var(--surface)); color: color-mix(in srgb, var(--kid) 60%, var(--ink)); }
 
@@ -140,6 +142,8 @@ button, input { font: inherit; color: inherit; }
 .pin.bf { --c: var(--bf); } .pin.kid { --c: var(--kid); } .pin.rec { --c: var(--rec); }
 .pin.mtn { --c: var(--mtn); border-radius: 4px; transform: rotate(45deg); }
 .pin.mtn.on { transform: rotate(45deg) scale(1.45); }
+.pin.trail, .pin.ridge { border-radius: 5px; }
+.pin.trail { --c: var(--trail); } .pin.ridge { --c: var(--ridge); }
 .pin.approx { border-style: dashed; }
 .pin.on { transform: scale(1.45); box-shadow: 0 0 0 4px color-mix(in srgb, var(--c) 35%, transparent); }
 .me { width: 18px; height: 18px; border-radius: 50%; background: #1a73e8; border: 3px solid #fff; box-shadow: 0 0 0 6px rgba(26,115,232,.25); }
@@ -154,7 +158,7 @@ button, input { font: inherit; color: inherit; }
 .leaflet-popup-tip { background: var(--surface); }
 .leaflet-popup-content { margin: 14px 16px; font-size: var(--fs); line-height: 1.5; min-width: 230px; }
 .pop .kind { font-size: .8em; font-weight: 700; color: var(--c); display: flex; align-items: center; gap: 6px; }
-.pop.bf { --c: var(--bf); } .pop.kid { --c: var(--kid); } .pop.rec { --c: var(--rec); } .pop.mtn { --c: var(--mtn); }
+.pop.bf { --c: var(--bf); } .pop.kid { --c: var(--kid); } .pop.rec { --c: var(--rec); } .pop.mtn { --c: var(--mtn); } .pop.trail { --c: var(--trail); } .pop.ridge { --c: var(--ridge); }
 .pop .hint, .pop .pdist { margin: 0 0 8px; font-size: .8em; color: var(--ink-3); }
 .pop .pdist { color: var(--brand); font-weight: 600; font-size: .85em; }
 .courses { list-style: none; margin: 0 0 10px; padding: 0; display: grid; gap: 4px; max-height: 240px; overflow-y: auto; }

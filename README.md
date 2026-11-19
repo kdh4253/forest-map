@@ -9,6 +9,8 @@
 | 유아숲체험원 | [산림청_유아숲체험원 현황](https://www.data.go.kr/data/15081674/fileData.do) | 산림청 | 499 |
 | 자연휴양림 | [전국휴양림표준데이터](https://www.data.go.kr/data/15013111/standard.do) | 공공데이터포털(전국 지자체) | 186 |
 | 등산코스 | [한국등산트레킹지원센터_산림청 100대명산](https://www.data.go.kr/data/15098177/fileData.do) (GPX) | 한국등산트레킹지원센터 | 100산 · 607코스 |
+| 숲길·둘레길 | [국가숲길 코스](https://www.data.go.kr/data/15108080/fileData.do), [오감만족 숲길](https://www.data.go.kr/data/15098179/fileData.do) (GPX) | 한국등산트레킹지원센터 | 9곳 · 69구간 |
+| 종주길 | [백두대간 종주길](https://www.data.go.kr/data/15098180/fileData.do), [9정맥 종주코스](https://www.data.go.kr/data/15098181/fileData.do) (GPX) | 한국등산트레킹지원센터 | 16곳 · 61구간 |
 
 ## 기능
 - 내 위치 기준 가까운 숲 목록, 반경 10km 요약
@@ -37,6 +39,7 @@ serve.ps1             로컬 미리보기 서버 (http://localhost:8080)
 ```powershell
 powershell -ExecutionPolicy Bypass -File data\geocode.ps1
 powershell -ExecutionPolicy Bypass -File data\build-mountains.ps1
+powershell -ExecutionPolicy Bypass -File data\build-trails.ps1
 powershell -ExecutionPolicy Bypass -File data\build-data.ps1
 ```
 

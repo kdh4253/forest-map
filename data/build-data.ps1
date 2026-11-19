@@ -80,6 +80,22 @@ foreach ($r in $h) {
 if (Test-Path "$here\mountains.json") {
   foreach ($m in (Get-Content "$here\mountains.json" -Raw -Encoding UTF8 | ConvertFrom-Json)) { $out.Add($m) }
 }
+# 5) 숲길·둘레길, 종주길 (build-trails.ps1 결과)
+if (Test-Path "$here\trails.json") {
+  foreach ($t in (Get-Content "$here\trails.json" -Raw -Encoding UTF8 | ConvertFrom-Json)) { $out.Add($t) }
+}
+# 코스 경로 합치기 -> routes.json (앱이 코스를 처음 열 때 한 번 불러옴)
+$rt = New-Object System.Text.StringBuilder
+[void]$rt.Append('{')
+$first = $true
+foreach ($f in 'mtn_routes.json', 'trail_routes.json') {
+  if (-not (Test-Path "$here\$f")) { continue }
+  $body = ([IO.File]::ReadAllText("$here\$f", [Text.Encoding]::UTF8)).Trim().TrimStart([char]0xFEFF)
+  $body = $body.Substring(1, $body.Length - 2)   # 바깥 { } 제거
+  if ($body) { if (-not $first) { [void]$rt.Append(',') }; [void]$rt.Append($body); $first = $false }
+}
+[void]$rt.Append('}')
+[IO.File]::WriteAllText("$here\routes.json", $rt.ToString(), (New-Object Text.UTF8Encoding $false))
 
 $meta = [ordered]@{
   built = (Get-Date -Format 'yyyy-MM-dd')
@@ -87,10 +103,13 @@ $meta = [ordered]@{
     [ordered]@{ cat = 'bf';  title = '한국산림복지진흥원_무장애나눔길 조성정보'; url = 'https://www.data.go.kr/data/15063418/fileData.do'; ref = '2026-03-25' },
     [ordered]@{ cat = 'kid'; title = '산림청_유아숲체험원 현황';               url = 'https://www.data.go.kr/data/15081674/fileData.do'; ref = '2025-11-30' },
     [ordered]@{ cat = 'rec'; title = '전국휴양림표준데이터';                  url = 'https://www.data.go.kr/data/15013111/standard.do'; ref = '2026-09' },
-    [ordered]@{ cat = 'mtn'; title = '한국등산트레킹지원센터_산림청 100대명산'; url = 'https://www.data.go.kr/data/15098177/fileData.do'; ref = '2022-01-12' }
+    [ordered]@{ cat = 'mtn'; title = '한국등산트레킹지원센터_산림청 100대명산'; url = 'https://www.data.go.kr/data/15098177/fileData.do'; ref = '2022-01-12' },
+    [ordered]@{ cat = 'trail'; title = '한국등산트레킹지원센터_국가숲길 코스'; url = 'https://www.data.go.kr/data/15108080/fileData.do'; ref = '2023-08-25' },
+    [ordered]@{ cat = 'trail'; title = '한국등산트레킹지원센터_오감만족 숲길'; url = 'https://www.data.go.kr/data/15098179/fileData.do'; ref = '2022-01-12' },
+    [ordered]@{ cat = 'ridge'; title = '한국등산트레킹지원센터_백두대간 종주길'; url = 'https://www.data.go.kr/data/15098180/fileData.do'; ref = '2022-01-12' },
+    [ordered]@{ cat = 'ridge'; title = '한국등산트레킹지원센터_9정맥 종주코스'; url = 'https://www.data.go.kr/data/15098181/fileData.do'; ref = '2023-11' }
   )
 }
 $json = [ordered]@{ meta = $meta; places = $out } | ConvertTo-Json -Depth 8 -Compress
 [IO.File]::WriteAllText("$here\places.json", $json, (New-Object Text.UTF8Encoding $false))
-Write-Output ("places.json: bf={0} kid={1} rec={2} mtn={3} (kid skipped without coords: {4})" -f `
-  @($out | ? { $_.cat -eq 'bf' }).Count, @($out | ? { $_.cat -eq 'kid' }).Count, @($out | ? { $_.cat -eq 'rec' }).Count, @($out | ? { $_.cat -eq 'mtn' }).Count, $skipped)
+Write-Output ("places.json: " + (($out | Group-Object { $_.cat } | % { "$($_.Name)=$($_.Count)" }) -join ' ') + " (kid skipped without coords: $skipped)")

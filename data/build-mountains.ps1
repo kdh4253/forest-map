@@ -1,4 +1,4 @@
-﻿# 100대명산 코스 GPX(한국등산트레킹지원센터) -> mountains.json(산별 요약) + routes.json(코스 경로)
+﻿# 100대명산 코스 GPX(한국등산트레킹지원센터) -> mountains.json(산별 요약) + mtn_routes.json(코스 경로)
 # 산 하나 = 지도 핀 하나(가장 높은 지점), 코스별 길이·누적 오르막·예상 소요시간·편의시설을 계산한다.
 $ErrorActionPreference = 'Stop'
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -81,5 +81,5 @@ foreach ($dir in (Get-ChildItem $src -Directory | Sort-Object Name)) {
 }
 $enc = New-Object Text.UTF8Encoding $false
 [IO.File]::WriteAllText("$here\mountains.json", ($mountains | ConvertTo-Json -Depth 6 -Compress), $enc)
-[IO.File]::WriteAllText("$here\routes.json", ($routes | ConvertTo-Json -Depth 4 -Compress), $enc)
+[IO.File]::WriteAllText("$here\mtn_routes.json", ($routes | ConvertTo-Json -Depth 4 -Compress), $enc)
 Write-Output "mountains: $($mountains.Count), courses: $($routes.Count)"

@@ -6,7 +6,10 @@
     kid: { label: '유아숲체험원', short: '유아숲' },
     rec: { label: '자연휴양림',   short: '휴양림' },
     mtn: { label: '등산코스 (100대 명산)', short: '등산코스' },
+    trail: { label: '숲길·둘레길', short: '숲길·둘레길' },
+    ridge: { label: '종주길 (백두대간·정맥)', short: '종주길' },
   };
+  const hasCourses = (p) => Array.isArray(p.courses);
   const LEVEL = { easy: '쉬움', mid: '보통', hard: '힘듦' };
   const LEVEL_ORDER = { easy: 0, mid: 1, hard: 2 };
   const NEAR_KM = 10;        // "내 주변" 요약 반경
@@ -19,7 +22,7 @@
     set(k, v) { try { localStorage.setItem(k, v); } catch { /* 저장 불가 환경 무시 */ } },
   };
 
-  const state = { places: [], cats: new Set(['bf', 'kid', 'rec', 'mtn']), q: '', stayOnly: false, easyOnly: false, me: null, sel: null, limit: PAGE };
+  const state = { places: [], cats: new Set(['bf', 'kid', 'rec', 'mtn', 'trail', 'ridge']), q: '', stayOnly: false, easyOnly: false, me: null, sel: null, limit: PAGE };
   const markers = new Map();
 
   // ── 글자 크게 ──
@@ -57,6 +60,12 @@
     const h = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLon / 2) ** 2;
     return 6371 * 2 * Math.asin(Math.sqrt(h));
   }
+  // 코스가 있는 곳(산·숲길·종주길)은 가장 가까운 코스 출발점까지의 거리
+  function dist(o, p) {
+    let d = km(o, p);
+    if (hasCourses(p)) for (const c of p.courses) d = Math.min(d, km(o, { lat: c.start[0], lon: c.start[1] }));
+    return d;
+  }
   const fmtKm = (d) => d < 1 ? `${Math.round(d * 1000)}m` : d < 10 ? `${d.toFixed(1)}km` : `${Math.round(d)}km`;
   const fmtLen = (m) => m >= 1000 ? `${(m / 1000).toFixed(m % 1000 ? 1 : 0)}km` : `${m}m`;
 
@@ -64,7 +73,7 @@
   function matches(p) {
     if (!state.cats.has(p.cat)) return false;
     if (state.stayOnly && p.cat === 'rec' && !p.stay) return false;
-    if (state.easyOnly && p.cat === 'mtn' && !p.courses.some((c) => c.level === 'easy')) return false;
+    if (state.easyOnly && hasCourses(p) && !p.courses.some((c) => c.level === 'easy')) return false;
     if (state.q) {
       const extra = p.courses ? p.courses.map((c) => c.from || '').join(' ') : '';
       const hay = `${p.name} ${p.addr} ${p.org || ''} ${extra}`.toLowerCase();
@@ -74,8 +83,13 @@
   }
 
   // ── 등산코스 ──
-  const sortedCourses = (p) => [...p.courses].sort((a, b) => LEVEL_ORDER[a.level] - LEVEL_ORDER[b.level] || a.km - b.km);
-  const courseName = (p, c) => c.from ? `${c.from} 출발` : `${p.name} ${c.id.split('-')[1]}코스`;
+  // 산은 쉬운 코스부터, 숲길·종주길은 원래 구간 순서대로
+  const sortedCourses = (p) => p.cat === 'mtn'
+    ? [...p.courses].sort((a, b) => LEVEL_ORDER[a.level] - LEVEL_ORDER[b.level] || a.km - b.km)
+    : p.courses;
+  const courseName = (p, c) => p.cat === 'mtn'
+    ? (c.from ? `${c.from} 출발` : `${p.name} ${c.id.split('-')[1]}코스`)
+    : (c.from || `${c.id.split('-')[1]}코스`);
   // 코스마다 다른 색 (초록 지도 위에서 잘 보이는 색 위주, 목록 순서대로 배정)
   const PALETTE = ['#e6194b', '#2f6fde', '#f58231', '#911eb4', '#0aa3b5', '#d6249f', '#8c5a1e', '#1b2a8a', '#c9a100', '#7a0019', '#3a8f84', '#ff6f91'];
   const courseColor = (i) => PALETTE[i % PALETTE.length];
@@ -90,13 +104,18 @@
         <span class="cmeta">${c.km}km${c.rise != null ? ` · 약 ${c.rise}m 오름` : ''}${tags ? ` · ${tags}` : ''}</span>
       </button></li>`;
     }).join('');
-    const dist = state.me ? `<p class="pdist">내 위치에서 ${esc(fmtKm(km(state.me, p)))}</p>` : '';
-    return `<div class="pop mtn">
-      <div class="kind"><i class="dot mtn"></i>${CAT.mtn.label}</div>
-      <h4>${esc(p.name)}</h4>${dist}
+    const distHtml = state.me ? `<p class="pdist">내 위치에서 ${p.cat === 'mtn' ? '가장 가까운 출발점까지 ' : '가장 가까운 구간 출발점까지 '}${esc(fmtKm(dist(state.me, p)))}</p>` : '';
+    const total = p.courses.reduce((s, c) => s + c.km, 0);
+    const intro = p.cat === 'mtn' ? '' : `<p class="pdist" style="color:var(--ink-2)">${p.src ? esc(p.src) + ' · ' : ''}${p.courses.length}개 구간 · 총 약 ${Math.round(total)}km</p>`;
+    const go = p.cat === 'mtn'
+      ? `<a class="go" href="https://map.kakao.com/link/to/${nm},${p.lat},${p.lon}" target="_blank" rel="noopener">정상까지 길찾기</a>`
+      : `<a class="go" href="https://map.kakao.com/link/to/${nm},${p.lat},${p.lon}" target="_blank" rel="noopener">첫 구간 출발점 길찾기</a>`;
+    return `<div class="pop ${p.cat}">
+      <div class="kind"><i class="dot ${p.cat}"></i>${CAT[p.cat].label}</div>
+      <h4>${esc(p.name)}</h4>${intro}${distHtml}
       <p class="hint">지도에 코스 ${p.courses.length}개를 색으로 표시했어요. 코스를 누르면 그 길만 강조돼요. 난이도는 거리와 높이차로 계산한 참고값이에요.</p>
       <ul class="courses">${rows}</ul>
-      <div class="acts"><a class="go" href="https://map.kakao.com/link/to/${nm},${p.lat},${p.lon}" target="_blank" rel="noopener">정상까지 길찾기</a></div>
+      <div class="acts">${go}</div>
     </div>`;
   }
 
@@ -157,6 +176,12 @@
       </div>`;
     routeBar.dataset.mtn = mtnId;
     routeBar.hidden = false;
+    // 코스 전체가 한눈에 보이게 지도 맞추기 (둘레길·종주길처럼 긴 길에 특히 필요)
+    const ls = Object.values(drawn.lines);
+    if (ls.length) {
+      const b = ls.reduce((acc, l) => acc.extend(l.line.getBounds()), L.latLngBounds(ls[0].line.getBounds()));
+      map.fitBounds(b, { paddingTopLeft: [30, 30], paddingBottomRight: [30, routeBar.offsetHeight + 30], maxZoom: 14 });
+    }
   }
 
   async function showRoute(mtnId, courseId) {
@@ -203,7 +228,7 @@
 
   // ── 팝업 ──
   function popupHtml(p) {
-    if (p.cat === 'mtn') return mountainPopupHtml(p);
+    if (hasCourses(p)) return mountainPopupHtml(p);
     const rows = [];
     const row = (k, v) => { if (v) rows.push(`<dt>${esc(k)}</dt><dd>${v}</dd>`); };
     row('주소', esc(p.addr) + (p.approx ? ' <span class="badge warn">대략 위치</span>' : ''));
@@ -221,7 +246,7 @@
       row('입장료', esc(p.fee));
       row('문의', p.tel ? `<a href="tel:${esc(p.tel)}">${esc(p.tel)}</a>` : '');
     }
-    if (state.me) row('거리', `내 위치에서 ${esc(fmtKm(km(state.me, p)))}`);
+    if (state.me) row('거리', `내 위치에서 ${esc(fmtKm(dist(state.me, p)))}`);
     const nm = encodeURIComponent(p.name);
     const acts = [
       `<a class="go" href="https://map.kakao.com/link/to/${nm},${p.lat},${p.lon}" target="_blank" rel="noopener">길찾기</a>`,
@@ -248,11 +273,11 @@
       m.on('popupclose', () => {
         if (keepRoute) return;
         if (state.sel === p.id) select(null, false);
-        if (p.cat === 'mtn' && drawn.mtn === p.id) showOverview(p.id);
+        if (hasCourses(p) && drawn.mtn === p.id) showOverview(p.id);
       });
       m.on('popupopen', () => {
         if (drawn.mtn && drawn.mtn !== p.id) clearRoute();
-        if (p.cat === 'mtn') {
+        if (hasCourses(p)) {
           routeBar.hidden = true; startLayer.clearLayers();
           drawCourses(p.id).then((ok) => { if (ok) highlight(null); });
         }
@@ -279,15 +304,15 @@
     const bounds = map.getBounds();
     let arr = state.places.filter(matches);
     if (!state.q) arr = arr.filter((p) => bounds.contains([p.lat, p.lon]));
-    return arr.map((p) => ({ p, d: km(origin, p) })).sort((a, b) => a.d - b.d);
+    return arr.map((p) => ({ p, d: dist(origin, p) })).sort((a, b) => a.d - b.d);
   }
 
   function renderSummary(arr) {
     if (state.me) {
-      const near = { bf: 0, kid: 0, rec: 0, mtn: 0 };
-      for (const p of state.places) if (matches(p) && km(state.me, p) <= NEAR_KM) near[p.cat]++;
+      const near = Object.fromEntries(Object.keys(CAT).map((c) => [c, 0]));
+      for (const p of state.places) if (matches(p) && dist(state.me, p) <= NEAR_KM) near[p.cat]++;
       const parts = Object.keys(CAT).filter((c) => state.cats.has(c) && near[c]).map((c) => `${CAT[c].short} <strong>${near[c]}</strong>곳`);
-      const total = near.bf + near.kid + near.rec + near.mtn;
+      const total = Object.values(near).reduce((a, b) => a + b, 0);
       summaryEl.innerHTML = total
         ? `내 위치 ${NEAR_KM}km 안에 ${parts.join(' · ')}`
         : `내 위치 ${NEAR_KM}km 안에는 아직 없어요. 가까운 순으로 보여 드릴게요.`;
@@ -317,6 +342,10 @@
         const lo = Math.min(...ks), hi = Math.max(...ks);
         meta.push(`코스 ${p.courses.length}개`, lo === hi ? `${lo}km` : `${lo}~${hi}km`);
         if (easy) meta.push(`쉬운 코스 ${easy}개`);
+      } else if (hasCourses(p)) {
+        const total = Math.round(p.courses.reduce((s, c) => s + c.km, 0));
+        meta.push(p.courses.length > 1 ? `${p.courses.length}개 구간` : '한 줄기 전 구간', `총 약 ${total}km`);
+        if (p.src) meta.push(p.src);
       }
       if (p.addr) meta.push(esc(p.addr));
       return `<li class="item${state.sel === p.id ? ' on' : ''}" data-id="${p.id}" tabindex="0" role="button" aria-label="${esc(CAT[p.cat].label)} ${esc(p.name)}${showDist ? ', ' + fmtKm(d) : ''}">
@@ -369,7 +398,7 @@
     const v = e.target.value; if (!v) return;
     e.target.checked ? state.cats.add(v) : state.cats.delete(v);
     stayWrap.hidden = !state.cats.has('rec');
-    easyWrap.hidden = !state.cats.has('mtn');
+    easyWrap.hidden = !['mtn', 'trail', 'ridge'].some((c) => state.cats.has(c));
     state.limit = PAGE; renderAll();
   });
   $('#stayOnly').addEventListener('change', (e) => { state.stayOnly = e.target.checked; state.limit = PAGE; renderAll(); });
