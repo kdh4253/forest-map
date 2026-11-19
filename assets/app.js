@@ -22,7 +22,8 @@
     set(k, v) { try { localStorage.setItem(k, v); } catch { /* 저장 불가 환경 무시 */ } },
   };
 
-  const state = { places: [], cats: new Set(['bf', 'kid', 'rec', 'mtn', 'trail', 'ridge']), q: '', stayOnly: false, easyOnly: false, me: null, sel: null, limit: PAGE };
+  const state = { places: [], cats: new Set(['bf', 'kid', 'rec', 'mtn', 'trail', 'ridge']), q: '', stayOnly: false, easyOnly: false, me: null, sel: null, limit: PAGE, recSort: 'near', recLimit: 5 };
+  const REC_KM = 20;         // 추천 코스: 출발점이 이 거리 안에 있는 코스
   const markers = new Map();
 
   // ── 글자 크게 ──
@@ -184,7 +185,8 @@
     }
   }
 
-  async function showRoute(mtnId, courseId) {
+  // opts.include: 함께 보이게 할 지점(내 위치), opts.keepSheet: 모바일 목록 크기 유지
+  async function showRoute(mtnId, courseId, opts = {}) {
     if (!(await drawCourses(mtnId))) return;
     const l = drawn.lines[courseId]; if (!l) return;
     const p = state.places.find((x) => x.id === mtnId);
@@ -211,8 +213,58 @@
       </div>`;
     routeBar.dataset.mtn = mtnId;
     routeBar.hidden = false;
-    if (mobile()) setSheet('min');
-    map.fitBounds(line.getBounds(), { paddingTopLeft: [40, 40], paddingBottomRight: [40, routeBar.offsetHeight + 40], maxZoom: 15 });
+    if (mobile() && !opts.keepSheet) setSheet('min');
+    const b = L.latLngBounds(line.getBounds());
+    if (opts.include) b.extend(opts.include);
+    map.fitBounds(b, { paddingTopLeft: [40, 40], paddingBottomRight: [40, routeBar.offsetHeight + 40], maxZoom: 15 });
+    state.recOn = courseId;   // 목록이 다시 그려져도 선택 표시 유지
+    listEl.querySelectorAll('.rcm.on').forEach((el) => el.classList.remove('on'));
+    listEl.querySelector(`.rcm[data-cid="${courseId}"]`)?.classList.add('on');
+  }
+
+  // ── 내 주변 추천 코스 ──
+  // 산·숲길·종주길의 모든 코스를 '출발점까지 거리'로 줄 세운다
+  function nearbyCourses() {
+    if (!state.me) return { list: [], within: false };
+    const all = [];
+    for (const p of state.places) {
+      if (!hasCourses(p) || !matches(p)) continue;
+      for (const c of p.courses) {
+        if (state.easyOnly && c.level !== 'easy') continue;
+        all.push({ p, c, d: km(state.me, { lat: c.start[0], lon: c.start[1] }) });
+      }
+    }
+    all.sort((a, b) => a.d - b.d);
+    let list = all.filter((x) => x.d <= REC_KM);
+    const within = list.length > 0;
+    if (!within) list = all.slice(0, 5);
+    if (state.recSort === 'easy') list = [...list].sort((a, b) => LEVEL_ORDER[a.c.level] - LEVEL_ORDER[b.c.level] || a.d - b.d);
+    return { list, within, nearest: all[0] };
+  }
+
+  function recsHtml() {
+    const { list, within, nearest } = nearbyCourses();
+    if (!list.length) return '';
+    const items = list.slice(0, state.recLimit).map((x, i) => {
+      const best = nearest && x.c.id === nearest.c.id;
+      return `<li><button type="button" class="rcm${best ? ' best' : ''}${state.recOn === x.c.id && !routeBar.hidden ? ' on' : ''}" data-pid="${x.p.id}" data-cid="${x.c.id}">
+        <span class="rk">${i + 1}</span>
+        <span class="rinfo"><b>${esc(courseName(x.p, x.c))}</b>
+          <small><i class="dot ${x.p.cat}"></i>${esc(x.p.name)} · 코스 ${x.c.km}km${best ? ' · <em>가장 가까운 출발점</em>' : ''}</small></span>
+        <span class="rside"><span class="lv ${x.c.level}">${LEVEL[x.c.level]}</span><span class="rdist">${fmtKm(x.d)}</span></span>
+      </button></li>`;
+    }).join('');
+    const more = list.length > state.recLimit ? `<button type="button" class="more more-recs">추천 코스 ${list.length - state.recLimit}개 더 보기</button>` : '';
+    const sub = within ? `출발점까지 거리 기준 · ${REC_KM}km 안에 ${list.length}개 코스` : `${REC_KM}km 안에는 코스가 없어 가장 가까운 코스를 보여 드려요`;
+    return `<li class="recs">
+      <div class="recs-head"><b>내 주변 추천 코스</b>
+        <div class="seg" role="group" aria-label="추천 코스 정렬">
+          <button type="button" data-sort="near" aria-pressed="${state.recSort === 'near'}">가까운 순</button>
+          <button type="button" data-sort="easy" aria-pressed="${state.recSort === 'easy'}">쉬운 순</button>
+        </div></div>
+      <p class="recs-sub">${sub}</p>
+      <ol class="rec-list">${items}</ol>${more}
+    </li>`;
   }
   routeBar.addEventListener('click', (e) => {
     const act = e.target.closest('button')?.dataset.act; if (!act) return;
@@ -326,8 +378,9 @@
   function renderList() {
     const arr = currentList();
     renderSummary(arr);
+    const recs = state.me ? recsHtml() : '';
     if (!arr.length) {
-      listEl.innerHTML = `<li class="empty">${state.q ? '검색 결과가 없어요. 다른 이름이나 지역으로 찾아보세요.' : '이 지역에는 표시할 숲이 없어요. 지도를 축소하거나 옮겨 보세요.'}</li>`;
+      listEl.innerHTML = recs + `<li class="empty">${state.q ? '검색 결과가 없어요. 다른 이름이나 지역으로 찾아보세요.' : '이 지역에는 표시할 숲이 없어요. 지도를 축소하거나 옮겨 보세요.'}</li>`;
       return;
     }
     const showDist = !!state.me;
@@ -354,7 +407,8 @@
       </li>`;
     }).join('');
     const more = arr.length > state.limit ? `<li><button class="more" type="button" id="more">${arr.length - state.limit}곳 더 보기</button></li>` : '';
-    listEl.innerHTML = html + more;
+    const head = recs ? `<li class="list-head">가까운 숲 · 장소</li>` : '';
+    listEl.innerHTML = recs + head + html + more;
   }
 
   function renderAll() { refreshMarkers(); renderList(); }
@@ -385,6 +439,11 @@
 
   listEl.addEventListener('click', (e) => {
     if (e.target.closest('#more')) { state.limit += PAGE; renderList(); return; }
+    if (e.target.closest('.more-recs')) { state.recLimit += 10; renderList(); return; }
+    const sortBtn = e.target.closest('[data-sort]');
+    if (sortBtn) { state.recSort = sortBtn.dataset.sort; state.recLimit = 5; renderList(); return; }
+    const rec = e.target.closest('.rcm');
+    if (rec) { showRoute(rec.dataset.pid, rec.dataset.cid, { include: state.me ? [state.me.lat, state.me.lon] : null }); return; }
     const li = e.target.closest('.item'); if (li) select(li.dataset.id, true);
   });
   listEl.addEventListener('keydown', (e) => {
@@ -425,18 +484,32 @@
     if (!navigator.geolocation) { summaryEl.textContent = '이 브라우저에서는 위치를 확인할 수 없어요. 검색이나 지도 이동으로 찾아보세요.'; return; }
     btnLocate.classList.add('busy'); btnLocate.querySelector('span').textContent = '위치 확인 중…';
     navigator.geolocation.getCurrentPosition((pos) => {
-      state.me = { lat: pos.coords.latitude, lon: pos.coords.longitude };
-      if (meMarker) meMarker.remove();
-      meMarker = L.marker([state.me.lat, state.me.lon], { icon: L.divIcon({ className: '', html: '<div class="me"></div>', iconSize: [18, 18], iconAnchor: [9, 9] }), title: '내 위치', zIndexOffset: 1000 }).addTo(map);
-      map.setView([state.me.lat, state.me.lon], 12);
-      btnLocate.classList.remove('busy'); btnLocate.querySelector('span').textContent = '내 위치 다시 찾기';
-      state.limit = PAGE; renderList();
-      if (mobile()) setSheet('mid');
+      btnLocate.classList.remove('busy');
+      setMe(pos.coords.latitude, pos.coords.longitude, '내 위치');
     }, (err) => {
       btnLocate.classList.remove('busy'); btnLocate.querySelector('span').textContent = '내 주변 숲 찾기';
       summaryEl.textContent = err.code === 1 ? '위치 권한이 꺼져 있어요. 브라우저 설정에서 허용하거나, 검색으로 찾아보세요.' : '위치를 가져오지 못했어요. 잠시 후 다시 시도해 주세요.';
     }, { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 });
   });
+
+  // 위치가 정해지면: 내 위치 표시 → 추천 코스 목록 → 가장 가까운 코스를 지도에 바로 띄움
+  function setMe(lat, lon, label) {
+    state.me = { lat, lon };
+    if (meMarker) meMarker.remove();
+    meMarker = L.marker([lat, lon], { icon: L.divIcon({ className: '', html: '<div class="me"></div>', iconSize: [18, 18], iconAnchor: [9, 9] }), title: label, zIndexOffset: 1000 })
+      .bindTooltip(label, { direction: 'bottom', offset: [0, 10] }).addTo(map);
+    btnLocate.querySelector('span').textContent = '내 위치 다시 찾기';
+    state.limit = PAGE; state.recLimit = 5; state.recSort = 'near';
+    if (mobile()) setSheet('mid');
+    const { nearest } = nearbyCourses();
+    if (nearest && nearest.d <= 10) {
+      showRoute(nearest.p.id, nearest.c.id, { include: [lat, lon], keepSheet: true });
+    } else {
+      map.setView([lat, lon], 12);
+    }
+    renderList();
+    listEl.scrollTop = 0;
+  }
 
   // ── 모바일 바텀시트 ──
   function setSheet(mode) {
@@ -469,6 +542,9 @@
         `<li><i class="dot ${s.cat}"></i> <a href="${esc(s.url)}" target="_blank" rel="noopener">${esc(s.title)}</a> · 기준 ${esc(s.ref)} · 공공데이터포털</li>`).join('');
       buildMarkers();
       renderAll();
+      // ?near=위도,경도 : 그 지점을 기준 위치로 (시연·공유용)
+      const near = (new URLSearchParams(location.search).get('near') || '').split(',').map(Number);
+      if (near.length === 2 && near.every(Number.isFinite)) { setMe(near[0], near[1], '기준 위치'); return; }
       const m = location.hash.match(/^#p=(\w+)/);
       if (m && markers.has(m[1])) select(m[1], true);
     })
