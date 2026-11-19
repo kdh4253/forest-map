@@ -76,12 +76,15 @@
   // ── 등산코스 ──
   const sortedCourses = (p) => [...p.courses].sort((a, b) => LEVEL_ORDER[a.level] - LEVEL_ORDER[b.level] || a.km - b.km);
   const courseName = (p, c) => c.from ? `${c.from} 출발` : `${p.name} ${c.id.split('-')[1]}코스`;
+  // 코스마다 다른 색 (초록 지도 위에서 잘 보이는 색 위주, 목록 순서대로 배정)
+  const PALETTE = ['#e6194b', '#2f6fde', '#f58231', '#911eb4', '#0aa3b5', '#d6249f', '#8c5a1e', '#1b2a8a', '#c9a100', '#7a0019', '#3a8f84', '#ff6f91'];
+  const courseColor = (i) => PALETTE[i % PALETTE.length];
 
   function mountainPopupHtml(p) {
     const nm = encodeURIComponent(p.name);
-    const rows = sortedCourses(p).map((c) => {
+    const rows = sortedCourses(p).map((c, i) => {
       const tags = [c.park && '주차', c.toilet && '화장실', c.bus && '대중교통'].filter(Boolean).join(' · ');
-      return `<li><button type="button" class="course" data-route="${c.id}" data-mtn="${p.id}">
+      return `<li><button type="button" class="course" data-route="${c.id}" data-mtn="${p.id}" style="--cc:${courseColor(i)}">
         <span class="lv ${c.level}">${LEVEL[c.level]}</span>
         <span class="cname">${esc(courseName(p, c))}</span>
         <span class="cmeta">${c.km}km${c.rise != null ? ` · 약 ${c.rise}m 오름` : ''}${tags ? ` · ${tags}` : ''}</span>
@@ -91,7 +94,7 @@
     return `<div class="pop mtn">
       <div class="kind"><i class="dot mtn"></i>${CAT.mtn.label}</div>
       <h4>${esc(p.name)}</h4>${dist}
-      <p class="hint">코스를 누르면 지도에 등산로가 표시돼요. 난이도는 거리와 높이차로 계산한 참고값이에요.</p>
+      <p class="hint">지도에 코스 ${p.courses.length}개를 색으로 표시했어요. 코스를 누르면 그 길만 강조돼요. 난이도는 거리와 높이차로 계산한 참고값이에요.</p>
       <ul class="courses">${rows}</ul>
       <div class="acts"><a class="go" href="https://map.kakao.com/link/to/${nm},${p.lat},${p.lon}" target="_blank" rel="noopener">정상까지 길찾기</a></div>
     </div>`;
@@ -99,27 +102,79 @@
 
   let routesCache = null;
   let keepRoute = false;
+  let drawn = { mtn: null, lines: {} };
   const routeLayer = L.layerGroup().addTo(map);
+  const startLayer = L.layerGroup().addTo(map);
   const routeBar = $('#routeBar');
-  function clearRoute() { routeLayer.clearLayers(); routeBar.hidden = true; }
+  function clearRoute() { routeLayer.clearLayers(); startLayer.clearLayers(); drawn = { mtn: null, lines: {} }; routeBar.hidden = true; routeBar.dataset.mtn = ''; }
+
+  async function loadRoutes() {
+    if (!routesCache) routesCache = await fetch('data/routes.json').then((r) => r.json());
+    return routesCache;
+  }
+
+  // 산의 모든 코스를 각각 다른 색으로 그린다
+  async function drawCourses(mtnId) {
+    try { await loadRoutes(); } catch { return false; }
+    if (drawn.mtn === mtnId) return true;
+    routeLayer.clearLayers(); startLayer.clearLayers();
+    drawn = { mtn: mtnId, lines: {} };
+    const p = state.places.find((x) => x.id === mtnId);
+    sortedCourses(p).forEach((c, i) => {
+      const pts = routesCache[c.id]; if (!pts) return;
+      const color = courseColor(i);
+      const casing = L.polyline(pts, { color: '#fff', weight: 7, opacity: 0.8, interactive: false }).addTo(routeLayer);
+      const line = L.polyline(pts, { color, weight: 4, opacity: 0.95, interactive: false }).addTo(routeLayer);
+      // 가는 선은 누르기 어려워서, 보이지 않는 굵은 선을 위에 겹쳐 클릭·툴팁을 받는다
+      const hit = L.polyline(pts, { color, weight: 18, opacity: 0, className: 'route-hit' }).addTo(routeLayer);
+      hit.bindTooltip(`${LEVEL[c.level]} · ${courseName(p, c)} · ${c.km}km`, { sticky: true });
+      hit.on('click', (e) => { L.DomEvent.stop(e); showRoute(mtnId, c.id); });
+      drawn.lines[c.id] = { casing, line, hit, color };
+    });
+    return true;
+  }
+
+  // courseId 하나를 강조하고 나머지는 흐리게 (null이면 모두 같은 굵기)
+  function highlight(courseId) {
+    for (const [id, l] of Object.entries(drawn.lines)) {
+      if (!courseId) { l.casing.setStyle({ weight: 7, opacity: 0.8 }); l.line.setStyle({ weight: 4, opacity: 0.95 }); continue; }
+      if (id === courseId) { l.casing.setStyle({ weight: 11, opacity: 1 }); l.line.setStyle({ weight: 6, opacity: 1 }); }
+      else { l.casing.setStyle({ weight: 0, opacity: 0 }); l.line.setStyle({ weight: 3, opacity: 0.3 }); }
+    }
+    if (courseId && drawn.lines[courseId]) { drawn.lines[courseId].casing.bringToFront(); drawn.lines[courseId].line.bringToFront(); drawn.lines[courseId].hit.bringToFront(); }
+  }
+
+  // 팝업을 닫았을 때: 코스 전체 보기 막대
+  function showOverview(mtnId) {
+    const p = state.places.find((x) => x.id === mtnId);
+    highlight(null); startLayer.clearLayers();
+    routeBar.innerHTML = `
+      <div class="rb-main"><div><b>${esc(p.name)} · 코스 ${p.courses.length}개</b>
+        <small>색깔 선을 누르면 그 코스 정보가 나와요</small></div></div>
+      <div class="rb-acts">
+        <button type="button" data-act="list">코스 목록</button>
+        <button type="button" data-act="close" aria-label="등산로 닫기">닫기</button>
+      </div>`;
+    routeBar.dataset.mtn = mtnId;
+    routeBar.hidden = false;
+  }
+
   async function showRoute(mtnId, courseId) {
-    try {
-      if (!routesCache) routesCache = await fetch('data/routes.json').then((r) => r.json());
-    } catch { return; }
-    const pts = routesCache[courseId]; if (!pts) return;
+    if (!(await drawCourses(mtnId))) return;
+    const l = drawn.lines[courseId]; if (!l) return;
     const p = state.places.find((x) => x.id === mtnId);
     const c = p.courses.find((x) => x.id === courseId);
     // 팝업이 등산로를 가리지 않도록 닫고, 코스 정보는 지도 아래 막대로 보여 준다
     keepRoute = true; markers.get(mtnId).closePopup(); keepRoute = false;
-    routeLayer.clearLayers();
-    const color = getComputedStyle(document.documentElement).getPropertyValue('--mtn').trim() || '#b5532a';
-    L.polyline(pts, { color: '#fff', weight: 8, opacity: 0.9 }).addTo(routeLayer);
-    const line = L.polyline(pts, { color, weight: 5, opacity: 0.95 }).addTo(routeLayer);
-    L.circleMarker(c.start, { radius: 7, color: '#fff', weight: 3, fillColor: color, fillOpacity: 1 })
-      .bindTooltip('출발', { direction: 'top', permanent: true, className: 'start-tip' }).addTo(routeLayer);
+    highlight(courseId);
+    startLayer.clearLayers();
+    L.circleMarker(c.start, { radius: 7, color: '#fff', weight: 3, fillColor: l.color, fillOpacity: 1 })
+      .bindTooltip('출발', { direction: 'top', permanent: true, className: 'start-tip' }).addTo(startLayer);
+    const line = l.line;
     const tags = [c.park && '주차장', c.toilet && '화장실', c.bus && '대중교통'].filter(Boolean).join(' · ');
     routeBar.innerHTML = `
       <div class="rb-main">
+        <i class="swatch" style="background:${l.color}"></i>
         <span class="lv ${c.level}">${LEVEL[c.level]}</span>
         <div><b>${esc(p.name)} · ${esc(courseName(p, c))}</b>
         <small>${c.km}km${c.rise != null ? ` · 출발점보다 약 ${c.rise}m 높이 오름` : ''}${tags ? ` · ${tags}` : ''}</small></div>
@@ -137,7 +192,7 @@
   routeBar.addEventListener('click', (e) => {
     const act = e.target.closest('button')?.dataset.act; if (!act) return;
     if (act === 'close') { clearRoute(); return; }
-    const m = markers.get(routeBar.dataset.mtn);
+    const m = markers.get(drawn.mtn);
     keepRoute = true; cluster.zoomToShowLayer(m, () => { m.openPopup(); keepRoute = false; });
   });
   // Leaflet 팝업은 클릭 전파를 막으므로 열릴 때 버튼에 직접 연결
@@ -190,8 +245,18 @@
       const m = L.marker([p.lat, p.lon], { icon: icon(p, false), title: p.name, keyboard: true });
       m.bindPopup(() => popupHtml(p), { maxWidth: 320, autoPanPadding: [24, 24] });
       m.on('click', () => select(p.id, false));
-      m.on('popupclose', () => { if (keepRoute) return; if (state.sel === p.id) select(null, false); });
-      m.on('popupopen', () => { if (!keepRoute && routeBar.dataset.mtn !== p.id) clearRoute(); });
+      m.on('popupclose', () => {
+        if (keepRoute) return;
+        if (state.sel === p.id) select(null, false);
+        if (p.cat === 'mtn' && drawn.mtn === p.id) showOverview(p.id);
+      });
+      m.on('popupopen', () => {
+        if (drawn.mtn && drawn.mtn !== p.id) clearRoute();
+        if (p.cat === 'mtn') {
+          routeBar.hidden = true; startLayer.clearLayers();
+          drawCourses(p.id).then((ok) => { if (ok) highlight(null); });
+        }
+      });
       markers.set(p.id, m);
     }
   }
@@ -201,7 +266,7 @@
     for (const p of state.places) if (matches(p)) show.push(markers.get(p.id));
     cluster.clearLayers();
     cluster.addLayers(show);
-    const rm = !routeBar.hidden && state.places.find((x) => x.id === routeBar.dataset.mtn);
+    const rm = drawn.mtn && state.places.find((x) => x.id === drawn.mtn);
     if (rm && !matches(rm)) clearRoute();
   }
 

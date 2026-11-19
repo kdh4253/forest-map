@@ -164,6 +164,8 @@ button, input { font: inherit; color: inherit; }
 }
 .course:hover { background: var(--surface-2); }
 .course.on { border-color: var(--mtn); background: color-mix(in srgb, var(--mtn) 10%, var(--surface)); }
+.course { border-left: 5px solid var(--cc, var(--line)); }
+.swatch { width: 14px; height: 14px; border-radius: 4px; flex: none; margin-top: 4px; }
 .course .lv { grid-row: span 2; font-size: .75em; font-weight: 700; padding: 2px 7px; border-radius: 6px; color: #fff; }
 .lv.easy { background: #2e8b57; } .lv.mid { background: #c48a1c; } .lv.hard { background: #b5372a; }
 .course .cname { font-weight: 600; font-size: .9em; }
@@ -198,6 +200,7 @@ button, input { font: inherit; color: inherit; }
   cursor: pointer; text-decoration: none; color: var(--ink);
 }
 .rb-acts .go { background: var(--brand); color: var(--brand-ink); border-color: var(--brand); }
+.route-hit { cursor: pointer; }
 .start-tip { font-weight: 700; font-size: 12px; padding: 2px 6px; }
 .route-bar:not([hidden]) ~ .legend { display: none; }
 
