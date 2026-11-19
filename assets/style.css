@@ -270,22 +270,29 @@ dialog p { margin: 0 0 10px; color: var(--ink-2); }
   .panel {
     position: absolute; left: 0; right: 0; bottom: 0; width: auto; height: 48%;
     border-right: 0; border-top: 1px solid var(--line); border-radius: 18px 18px 0 0; box-shadow: var(--shadow);
-    transition: height .25s ease;
+    transition: height .25s ease; overflow: hidden;
   }
   .panel.min { height: 168px; }
   .panel.max { height: calc(100% - 12px); }
-  .panel-grip { display: flex; justify-content: center; padding: 8px 0 2px; cursor: grab; touch-action: none; }
-  .panel-grip span { width: 44px; height: 5px; border-radius: 3px; background: var(--line); }
-  .controls { padding-top: 6px; gap: 8px; grid-template-columns: minmax(0, 1fr); }
-  /* 종류 버튼은 한 줄로 두고 옆으로 밀어서 본다 → 목록이 더 많이 보인다 */
-  .chips { flex-wrap: nowrap; overflow-x: auto; margin: 0 -16px; padding: 0 16px 2px; scrollbar-width: none; scroll-padding: 0 16px; }
-  .chips::-webkit-scrollbar { display: none; }
-  .chip { flex: none; min-height: 38px; padding: 6px 11px; }
-  .toggles { flex-wrap: nowrap; gap: 14px; }
-  .toggle { font-size: .84em; white-space: nowrap; gap: 6px; }
+  .panel.hide { height: 46px; }            /* 끝까지 내리면 손잡이만 남기고 숨김 */
+  .panel.dragging { transition: none; }    /* 끌 때는 손가락을 바로 따라옴 */
+  .panel-grip { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 12px 0 10px; cursor: grab; touch-action: none; flex: none; }
+  .panel-grip span { width: 44px; height: 5px; border-radius: 3px; background: var(--ink-3); opacity: .6; }
+  .panel-grip::after { content: "목록 열기"; display: none; font-size: .8em; font-weight: 600; color: var(--ink-2); }
+  .panel.hide .panel-grip::after { display: block; }
+  .panel.hide .panel-grip { padding-top: 7px; }
+  .controls { padding-top: 6px; grid-template-columns: minmax(0, 1fr); }
   .legend { display: none; } /* 아래 종류 버튼이 같은 색·모양을 보여 주므로 지도 위 범례는 뺀다 */
   .panel { z-index: 20; }
   .leaflet-bottom { bottom: 48%; }
   .route-bar { bottom: 180px; left: 10px; right: 10px; }
+  .panel.hide ~ .map-wrap .route-bar { bottom: 58px; }
+  /* 지도 출처: 작게 접어 두고 누르면 펼침 (OSM 출처 표시 지침의 작은 화면 방식) */
+  .leaflet-control-attribution.mini:not(.open) {
+    font-size: 0; width: 24px; height: 24px; padding: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer;
+  }
+  .leaflet-control-attribution.mini:not(.open)::before { content: "©"; font-size: 13px; font-weight: 700; color: #333; }
+  .leaflet-control-attribution.mini:not(.open) * { display: none; }
+  .leaflet-control-attribution.mini.open { border-radius: 8px; font-size: 11px; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }

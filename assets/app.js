@@ -1,6 +1,6 @@
 (() => {
   'use strict';
-  const VER = '20261119f';   // 배포할 때마다 바꿔 브라우저 캐시를 피한다 (index.html의 ?v= 와 같이)
+  const VER = '20261119g';   // 배포할 때마다 바꿔 브라우저 캐시를 피한다 (index.html의 ?v= 와 같이)
 
   const CAT = {
     bf:  { label: '무장애나눔길', short: '무장애나눔길' },
@@ -42,7 +42,12 @@
   // 휴대폰: 아래 목록(바텀시트)에 가리지 않게 남한 전체를 시트 위 공간에 맞춘다
   if (matchMedia('(max-width: 760px)').matches) {
     map.fitBounds([[33.1, 125.0], [38.6, 129.6]], { paddingTopLeft: [8, 8], paddingBottomRight: [8, $('#panel').offsetHeight + 8] });
-    map.attributionControl.setPosition('topright'); // 아래쪽은 목록·팝업과 겹치므로 출처 표시는 오른쪽 위로
+    // 지도 출처: 오른쪽 위에 © 하나로 접어 두고, 누르면 펼쳐서 OpenStreetMap 출처를 보여 준다
+    map.attributionControl.setPosition('topright').setPrefix(false);
+    const attr = map.attributionControl.getContainer();
+    attr.classList.add('mini');
+    attr.title = '지도 출처 보기';
+    attr.addEventListener('click', (e) => { if (!attr.classList.contains('open')) { e.preventDefault(); attr.classList.add('open'); setTimeout(() => attr.classList.remove('open'), 6000); } });
   }
   L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
@@ -518,22 +523,48 @@
   }
 
   // ── 모바일 바텀시트 ──
+  // 상태: hide(손잡이만) → min → mid → max. 손잡이를 끌면 손가락을 따라오고, 놓으면 가까운 단계로 붙는다.
+  const SHEETS = ['hide', 'min', 'mid', 'max'];
+  const sheetNow = () => SHEETS.find((s) => s !== 'mid' && panel.classList.contains(s)) || 'mid';
   function setSheet(mode) {
-    panel.classList.remove('min', 'max');
+    panel.classList.remove('min', 'max', 'hide');
+    panel.style.height = '';
     if (mode !== 'mid') panel.classList.add(mode);
     setTimeout(() => map.invalidateSize(), 280);
   }
+  function sheetHeights() { // 각 단계의 실제 높이(px)를 CSS에서 읽는다
+    const keep = panel.className, out = {};
+    panel.classList.add('dragging');
+    for (const s of SHEETS) { panel.classList.remove('min', 'max', 'hide'); if (s !== 'mid') panel.classList.add(s); out[s] = panel.offsetHeight; }
+    panel.className = keep;
+    return out;
+  }
   const grip = $('#grip');
-  let dragY = null;
-  grip.addEventListener('pointerdown', (e) => { dragY = e.clientY; grip.setPointerCapture(e.pointerId); });
-  grip.addEventListener('pointerup', (e) => {
-    if (dragY === null) return;
-    const dy = e.clientY - dragY; dragY = null;
-    const cur = panel.classList.contains('max') ? 'max' : panel.classList.contains('min') ? 'min' : 'mid';
-    if (Math.abs(dy) < 8) setSheet(cur === 'min' ? 'mid' : cur === 'mid' ? 'max' : 'min');
-    else if (dy < 0) setSheet(cur === 'min' ? 'mid' : 'max');
-    else setSheet(cur === 'max' ? 'mid' : 'min');
+  let drag = null;
+  grip.addEventListener('pointerdown', (e) => {
+    drag = { y: e.clientY, h: panel.offsetHeight, from: sheetNow(), hs: sheetHeights() };
+    grip.setPointerCapture(e.pointerId);
+    panel.classList.add('dragging');
+    panel.style.height = drag.h + 'px';
   });
+  grip.addEventListener('pointermove', (e) => {
+    if (!drag) return;
+    panel.style.height = Math.max(drag.hs.hide, Math.min(drag.hs.max, drag.h - (e.clientY - drag.y))) + 'px';
+  });
+  const endDrag = (e) => {
+    if (!drag) return;
+    const dy = e.clientY - drag.y, h = drag.h - dy, { from, hs } = drag;
+    drag = null;
+    panel.classList.remove('dragging');
+    if (Math.abs(dy) < 8) return setSheet(from === 'mid' ? 'max' : from === 'max' ? 'min' : 'mid'); // 톡 누르기
+    const order = SHEETS.slice().sort((a, b) => hs[a] - hs[b]);
+    const target = dy > 0
+      ? order.filter((s) => hs[s] <= h).pop() || 'hide'      // 내렸으면: 손을 뗀 높이보다 낮은 단계
+      : order.find((s) => hs[s] >= h) || 'max';              // 올렸으면: 손을 뗀 높이보다 높은 단계
+    setSheet(target);
+  };
+  grip.addEventListener('pointerup', endDrag);
+  grip.addEventListener('pointercancel', endDrag);
 
   // ── 시작 ──
   fetch('data/places.json?v=' + VER)
