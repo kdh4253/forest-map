@@ -1,5 +1,6 @@
 (() => {
   'use strict';
+  const VER = '20261119c';   // 배포할 때마다 바꿔 브라우저 캐시를 피한다 (index.html의 ?v= 와 같이)
 
   const CAT = {
     bf:  { label: '무장애나눔길', short: '무장애나눔길' },
@@ -129,7 +130,7 @@
   function clearRoute() { routeLayer.clearLayers(); startLayer.clearLayers(); drawn = { mtn: null, lines: {} }; routeBar.hidden = true; routeBar.dataset.mtn = ''; }
 
   async function loadRoutes() {
-    if (!routesCache) routesCache = await fetch('data/routes.json').then((r) => r.json());
+    if (!routesCache) routesCache = await fetch('data/routes.json?v=' + VER).then((r) => r.json());
     return routesCache;
   }
 
@@ -530,7 +531,7 @@
   });
 
   // ── 시작 ──
-  fetch('data/places.json')
+  fetch('data/places.json?v=' + VER)
     .then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); })
     .then(({ meta, places }) => {
       state.places = places;
