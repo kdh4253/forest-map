@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>모두의 숲 · 누구나 갈 수 있는 내 주변 숲 지도</title>
+  <meta name="description" content="무장애나눔길, 유아숲체험원, 자연휴양림, 100대 명산 등산코스를 한 지도에서. 산림공공데이터로 만든 내 주변 숲 찾기 서비스.">
+  <meta property="og:title" content="모두의 숲">
+  <meta property="og:description" content="휠체어부터 등산화까지, 누구나 갈 수 있는 내 주변 숲을 찾아보세요.">
+  <meta name="theme-color" content="#1f5d3a">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M16 2 6 16h5l-6 9h9v5h4v-5h9l-6-9h5z' fill='%231f5d3a'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.min.css">
+  <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+  <a class="skip" href="#list">목록으로 건너뛰기</a>
+
+  <header class="top">
+    <div class="brand">
+      <svg class="logo" viewBox="0 0 32 32" aria-hidden="true"><path d="M16 2 6 16h5l-6 9h9v5h4v-5h9l-6-9h5z"/></svg>
+      <div>
+        <h1>모두의 숲</h1>
+        <p class="tag">휠체어부터 등산화까지, 누구나 갈 수 있는 가까운 숲</p>
+      </div>
+    </div>
+    <div class="top-actions">
+      <button class="icon-btn" id="btnFont" aria-pressed="false" title="글자 크게 보기">가<span class="plus">+</span></button>
+      <button class="icon-btn" id="btnAbout" title="서비스 소개와 데이터 출처" aria-haspopup="dialog">?</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <aside class="panel" id="panel" aria-label="숲 목록">
+      <div class="panel-grip" id="grip" aria-hidden="true"><span></span></div>
+
+      <div class="controls">
+        <button class="locate" id="btnLocate">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/><circle cx="12" cy="12" r="7" fill="none"/></svg>
+          <span>내 주변 숲 찾기</span>
+        </button>
+
+        <label class="search">
+          <span class="sr-only">이름이나 지역으로 검색</span>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+          <input id="q" type="search" placeholder="이름·지역 검색 (예: 대전, 남산)" autocomplete="off">
+        </label>
+
+        <fieldset class="chips" id="chips">
+          <legend class="sr-only">보고 싶은 숲 종류</legend>
+          <label class="chip bf"><input type="checkbox" value="bf" checked><i></i>무장애나눔길 <b data-count="bf">0</b></label>
+          <label class="chip kid"><input type="checkbox" value="kid" checked><i></i>유아숲체험원 <b data-count="kid">0</b></label>
+          <label class="chip rec"><input type="checkbox" value="rec" checked><i></i>자연휴양림 <b data-count="rec">0</b></label>
+          <label class="chip mtn"><input type="checkbox" value="mtn" checked><i></i>등산코스 <b data-count="mtn">0</b></label>
+        </fieldset>
+        <div class="toggles">
+          <label class="toggle" id="stayWrap"><input type="checkbox" id="stayOnly"> 숙박 가능한 휴양림만</label>
+          <label class="toggle" id="easyWrap"><input type="checkbox" id="easyOnly"> 쉬운 코스가 있는 산만</label>
+        </div>
+      </div>
+
+      <div class="summary" id="summary" aria-live="polite"></div>
+      <ol class="list" id="list" tabindex="-1"></ol>
+    </aside>
+
+    <section class="map-wrap" aria-label="지도">
+      <div id="map"></div>
+      <div class="route-bar" id="routeBar" hidden aria-live="polite"></div>
+      <div class="legend" aria-hidden="true">
+        <span><i class="dot bf"></i>무장애나눔길</span>
+        <span><i class="dot kid"></i>유아숲</span>
+        <span><i class="dot rec"></i>휴양림</span>
+        <span><i class="dot mtn"></i>등산코스</span>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="about" aria-labelledby="aboutTitle">
+    <form method="dialog">
+      <h2 id="aboutTitle">모두의 숲은 이런 서비스예요</h2>
+      <p>숲에 가고 싶은 사람마다 찾는 길이 다릅니다. 휠체어나 유모차로 편하게 걸을 데크길, 아이와 놀 숲, 하루 쉬어 갈 휴양림, 주말에 오를 산까지.
+         모두의 숲은 흩어져 있는 산림공공데이터를 한 지도에 모아, <strong>지금 있는 곳에서 가까운 순서로</strong> 보여 줍니다.</p>
+      <ul class="about-cats">
+        <li><i class="dot bf"></i><b>무장애나눔길</b> 경사를 낮추고 계단을 없앤 데크길. 휠체어·유모차 통행이 가능하도록 조성된 숲길이에요.</li>
+        <li><i class="dot kid"></i><b>유아숲체험원</b> 아이들이 숲에서 놀며 배우는 공간. 운영 기간과 참여 방법(전화·방문 등)을 함께 보여 드려요.</li>
+        <li><i class="dot rec"></i><b>자연휴양림</b> 하루 쉬어 가거나 숙박할 수 있는 숲. 숙박 가능 여부로 골라 볼 수 있어요.</li>
+        <li><i class="dot mtn"></i><b>등산코스</b> 산림청 100대 명산의 등산로 607개. 코스를 누르면 실제 경로가 지도에 그려지고, 쉬움·보통·힘듦으로 골라 볼 수 있어요.</li>
+      </ul>
+      <h3>데이터 출처</h3>
+      <ul class="sources" id="sources"></ul>
+      <p class="note">유아숲체험원은 원본에 좌표가 없어 주소를 OpenStreetMap(Nominatim)으로 변환했습니다. 번지까지 찾지 못한 곳은 읍·면·동 중심의 <em>대략 위치</em>로 표시합니다.
+         운영 여부와 예약은 방문 전 각 기관에 꼭 확인해 주세요.</p>
+      <p class="note">등산코스 난이도는 GPS 기록의 거리와 출발점 대비 높이차로 계산한 참고값입니다(쉬움: 5km 이하·높이차 300m 미만, 힘듦: 12km 이상 또는 700m 이상). 기상과 체력에 맞춰 판단해 주세요.</p>
+      <p class="note">지도 © OpenStreetMap contributors</p>
+      <button class="primary" value="close">닫기</button>
+    </form>
+  </dialog>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.min.js"></script>
+  <script src="assets/app.js"></script>
+</body>
+</html>
