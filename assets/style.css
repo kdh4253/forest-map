@@ -127,6 +127,10 @@ button, input { font: inherit; color: inherit; }
 
 .dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; flex: none; background: var(--c); }
 .dot.bf { --c: var(--bf); } .dot.kid { --c: var(--kid); } .dot.rec { --c: var(--rec); } .dot.mtn { --c: var(--mtn); } .dot.trail { --c: var(--trail); } .dot.ridge { --c: var(--ridge); }
+/* 목록·버튼·범례의 작은 표시도 지도 핀과 같은 모양: 등산코스 마름모, 숲길·종주길 둥근 네모 */
+.dot.mtn, .chip.mtn i { border-radius: 2px; transform: rotate(45deg) scale(.82); }
+.dot.trail, .dot.ridge, .chip.trail i, .chip.ridge i { border-radius: 3px; }
+.dot.approx { background: transparent; box-shadow: inset 0 0 0 3px var(--ink-3); }
 .badge { display: inline-block; padding: 1px 7px; border-radius: 6px; font-size: .78em; font-weight: 600; background: var(--surface-2); color: var(--ink-2); }
 .badge.warn { background: color-mix(in srgb, var(--kid) 18%, var(--surface)); color: color-mix(in srgb, var(--kid) 60%, var(--ink)); }
 
@@ -144,7 +148,7 @@ button, input { font: inherit; color: inherit; }
 .pin.mtn.on { transform: rotate(45deg) scale(1.45); }
 .pin.trail, .pin.ridge { border-radius: 5px; }
 .pin.trail { --c: var(--trail); } .pin.ridge { --c: var(--ridge); }
-.pin.approx { border-style: dashed; }
+.pin.approx { background: #fff; border: 4.5px solid var(--c); }  /* 대략 위치: 속이 빈 고리 */
 .pin.on { transform: scale(1.45); box-shadow: 0 0 0 4px color-mix(in srgb, var(--c) 35%, transparent); }
 /* 내 위치: 숲 종류 색(파랑·주황·초록·갈색·청록·보라)과 겹치지 않는 빨강 + 퍼지는 물결 */
 .me { position: relative; width: 22px; height: 22px; border-radius: 50%; background: #e5294b; border: 3.5px solid #fff; box-shadow: 0 1px 6px rgba(0,0,0,.45); }
