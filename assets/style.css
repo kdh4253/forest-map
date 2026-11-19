@@ -33,8 +33,9 @@
 html.big { --fs: 18px; --panel-w: 440px; }
 
 * { box-sizing: border-box; }
-html, body { height: 100%; margin: 0; }
+html, body { height: 100%; margin: 0; overflow: hidden; }
 body {
+  position: fixed; inset: 0; /* 목록 자동 스크롤이 페이지 전체를 밀어 올려 머리글이 잘리지 않게 고정 */
   font-family: "Pretendard Variable", Pretendard, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
   font-size: var(--fs); line-height: 1.5; color: var(--ink); background: var(--bg);
   display: flex; flex-direction: column; overflow: hidden;
@@ -275,8 +276,14 @@ dialog p { margin: 0 0 10px; color: var(--ink-2); }
   .panel.max { height: calc(100% - 12px); }
   .panel-grip { display: flex; justify-content: center; padding: 8px 0 2px; cursor: grab; touch-action: none; }
   .panel-grip span { width: 44px; height: 5px; border-radius: 3px; background: var(--line); }
-  .controls { padding-top: 6px; }
-  .legend { top: 10px; bottom: auto; left: auto; right: 10px; }
+  .controls { padding-top: 6px; gap: 8px; grid-template-columns: minmax(0, 1fr); }
+  /* 종류 버튼은 한 줄로 두고 옆으로 밀어서 본다 → 목록이 더 많이 보인다 */
+  .chips { flex-wrap: nowrap; overflow-x: auto; margin: 0 -16px; padding: 0 16px 2px; scrollbar-width: none; scroll-padding: 0 16px; }
+  .chips::-webkit-scrollbar { display: none; }
+  .chip { flex: none; min-height: 38px; padding: 6px 11px; }
+  .toggles { flex-wrap: nowrap; gap: 14px; }
+  .toggle { font-size: .84em; white-space: nowrap; gap: 6px; }
+  .legend { display: none; } /* 아래 종류 버튼이 같은 색·모양을 보여 주므로 지도 위 범례는 뺀다 */
   .panel { z-index: 20; }
   .leaflet-bottom { bottom: 48%; }
   .route-bar { bottom: 180px; left: 10px; right: 10px; }

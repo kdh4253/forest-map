@@ -1,6 +1,6 @@
 (() => {
   'use strict';
-  const VER = '20261119e';   // 배포할 때마다 바꿔 브라우저 캐시를 피한다 (index.html의 ?v= 와 같이)
+  const VER = '20261119f';   // 배포할 때마다 바꿔 브라우저 캐시를 피한다 (index.html의 ?v= 와 같이)
 
   const CAT = {
     bf:  { label: '무장애나눔길', short: '무장애나눔길' },
@@ -39,6 +39,11 @@
 
   // ── 지도 ──
   const map = L.map('map', { zoomControl: true, minZoom: 6, maxZoom: 18, attributionControl: true }).setView([36.35, 127.8], 7);
+  // 휴대폰: 아래 목록(바텀시트)에 가리지 않게 남한 전체를 시트 위 공간에 맞춘다
+  if (matchMedia('(max-width: 760px)').matches) {
+    map.fitBounds([[33.1, 125.0], [38.6, 129.6]], { paddingTopLeft: [8, 8], paddingBottomRight: [8, $('#panel').offsetHeight + 8] });
+    map.attributionControl.setPosition('topright'); // 아래쪽은 목록·팝업과 겹치므로 출처 표시는 오른쪽 위로
+  }
   L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
