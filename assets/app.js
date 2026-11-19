@@ -1,6 +1,6 @@
 (() => {
   'use strict';
-  const VER = '20261119c';   // 배포할 때마다 바꿔 브라우저 캐시를 피한다 (index.html의 ?v= 와 같이)
+  const VER = '20261119d';   // 배포할 때마다 바꿔 브라우저 캐시를 피한다 (index.html의 ?v= 와 같이)
 
   const CAT = {
     bf:  { label: '무장애나눔길', short: '무장애나눔길' },
@@ -497,8 +497,8 @@
   function setMe(lat, lon, label) {
     state.me = { lat, lon };
     if (meMarker) meMarker.remove();
-    meMarker = L.marker([lat, lon], { icon: L.divIcon({ className: '', html: '<div class="me"></div>', iconSize: [18, 18], iconAnchor: [9, 9] }), title: label, zIndexOffset: 1000 })
-      .bindTooltip(label, { direction: 'bottom', offset: [0, 10] }).addTo(map);
+    meMarker = L.marker([lat, lon], { icon: L.divIcon({ className: '', html: '<div class="me"></div>', iconSize: [22, 22], iconAnchor: [11, 11] }), title: label, zIndexOffset: 1000 })
+      .bindTooltip(label, { direction: 'bottom', offset: [0, 12], permanent: true, className: 'me-label' }).addTo(map);
     btnLocate.querySelector('span').textContent = '내 위치 다시 찾기';
     state.limit = PAGE; state.recLimit = 5; state.recSort = 'near';
     if (mobile()) setSheet('mid');
